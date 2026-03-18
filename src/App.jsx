@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css'; // O CSS das notificações
 import './App.css';
+const API_URL = import.meta.env.VITE_API_URL; // Ou process.env.REACT_APP_API_URL se for CRA
 
 function App() {
   // ==========================================
   // ESTADOS DE AUTENTICAÇÃO
   // ==========================================
-  const [usuarioLogado, setUsuarioLogado] = useState(null);
+  const [usuarioLogado, setUsuarioLogado] = useState(() => {
+    const salvo = localStorage.getItem('@geektrack:user');
+    return salvo ? JSON.parse(salvo) : null;
+  });
   const [loginForm, setLoginForm] = useState({ email: '', senha: '' });
 
   // ==========================================
@@ -20,7 +26,7 @@ function App() {
   const [usuarioSelecionado, setUsuarioSelecionado] = useState({});
   const [historicos, setHistoricos] = useState({}); 
   const fileInputRef = useRef(null); 
-
+  const [carregando, setCarregando] = useState(false);
   const [novoItem, setNovoItem] = useState({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
   const [foto, setFoto] = useState(null); 
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', perfil: 'membro' });
@@ -32,18 +38,28 @@ function App() {
   // ==========================================
   // BUSCA DE DADOS
   // ==========================================
-  const carregarDados = () => {
-    if (!usuarioLogado) return; // Só busca se estiver logado
+  const carregarDados = async () => {
+  if (!usuarioLogado) return;
 
-    axios.get('http://localhost:3001/itens').then((res) => setItens(res.data));
-    axios.get('http://localhost:3001/categorias').then((res) => setCategorias(res.data));
+  setCarregando(true); // Liga o loading
+  try {
+    const resItens = await axios.get('http://localhost:3001/itens');
+    const resCat = await axios.get('http://localhost:3001/categorias');
+    setItens(resItens.data);
+    setCategorias(resCat.data);
     
-    // Apenas admin precisa carregar usuários e estatísticas avançadas
     if (usuarioLogado.perfil === 'admin') {
-      axios.get('http://localhost:3001/usuarios').then((res) => setUsuarios(res.data));
-      axios.get('http://localhost:3001/estatisticas').then((res) => setEstatisticas(res.data));
+      const resUsuarios = await axios.get('http://localhost:3001/usuarios');
+      const resEstat = await axios.get('http://localhost:3001/estatisticas');
+      setUsuarios(resUsuarios.data);
+      setEstatisticas(resEstat.data);
     }
-  };
+  } catch (erro) {
+    toast.error('Erro ao buscar dados do servidor!');
+  } finally {
+    setCarregando(false); // Desliga o loading no final
+  }
+};
 
   useEffect(() => { 
     carregarDados(); 
@@ -57,9 +73,10 @@ function App() {
     axios.post('http://localhost:3001/login', loginForm)
       .then(res => {
         setUsuarioLogado(res.data);
+        localStorage.setItem('@geektrack:user', JSON.stringify(res.data));
         setTelaAtual('acervo');
       })
-      .catch(() => alert('E-mail ou senha incorretos!'));
+      .catch(() => toast.error('E-mail ou senha incorretos!'));
   };
 
   // ==========================================
@@ -87,8 +104,8 @@ function App() {
       setNovoItem({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
       setFoto(null);
       if (fileInputRef.current) fileInputRef.current.value = ""; 
-      alert('Item adicionado ao acervo!');
-    }).catch(() => alert('Erro ao salvar o item.'));
+      toast.success('Item adicionado ao acervo!');
+    }).catch(() => toast.error('Erro ao salvar o item.'));
   };
 
   const deletarItem = (id) => {
@@ -115,16 +132,23 @@ function App() {
 
   const registrarEmprestimo = (itemId) => {
     const usuarioId = usuarioSelecionado[itemId];
-    if (!usuarioId) return alert("Selecione um usuário para emprestar!");
+    if (!usuarioId) return toast.warning("Selecione um usuário para emprestar!");
     
-    axios.post('http://localhost:3001/emprestar', { item_id: itemId, usuario_id: usuarioId })
-      .then(() => { carregarDados(); alert('Empréstimo registrado!'); })
-      .catch(() => alert('Erro ao registrar empréstimo.'));
+    axios.post(`${API_URL}/emprestar`, { item_id: itemId, usuario_id: usuarioId })
+      .then(() => { 
+        carregarDados(); 
+        toast.success('Empréstimo registrado!'); 
+      })
+      .catch((erro) => {
+        // Agora mostramos o erro que o backend mandar!
+        const msg = erro.response?.data?.erro || 'Erro ao registrar empréstimo.';
+        toast.error(msg);
+      });
   };
 
   const registrarDevolucao = (emprestimoId) => {
     axios.put(`http://localhost:3001/devolver/${emprestimoId}`)
-      .then(() => { carregarDados(); alert('Devolução registrada!'); });
+      .then(() => { carregarDados(); toast.success('Devolução registrada!'); });
   };
 
   const toggleHistorico = (itemId) => {
@@ -145,13 +169,21 @@ function App() {
     setNovoUsuario({ ...novoUsuario, [e.target.name]: e.target.value });
   };
 
-  const handleUsuarioSubmit = (e) => {
+ const handleUsuarioSubmit = (e) => {
     e.preventDefault();
+    
+    // Vamos usar a URL fixa temporariamente para garantir que não é erro de variável
     axios.post('http://localhost:3001/usuarios', novoUsuario)
       .then(() => {
-        alert('Membro cadastrado com sucesso!');
+        toast.success('Membro cadastrado com sucesso!');
         carregarDados();
         setNovoUsuario({ nome: '', email: '', senha: '', perfil: 'membro' });
+      })
+      .catch((erro) => {
+        // Isso vai jogar o erro na tela para nós lermos!
+        const mensagemErro = erro.response?.data?.erro || erro.message || 'Erro desconhecido';
+        toast.error(`Erro: ${mensagemErro}`);
+        console.error("🕵️ Detalhe do erro:", erro);
       });
   };
 
@@ -229,7 +261,10 @@ function App() {
             </>
           )}
 
-          <button onClick={() => setUsuarioLogado(null)} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+          <button onClick={() => {
+    setUsuarioLogado(null);
+    localStorage.removeItem('@geektrack:user'); // Limpa a memória!
+}} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
         </div>
       </header>
 
