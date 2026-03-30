@@ -27,10 +27,12 @@ function App() {
   const [historicos, setHistoricos] = useState({}); 
   const fileInputRef = useRef(null); 
   const [carregando, setCarregando] = useState(false);
+  
   const [novoItem, setNovoItem] = useState({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
   const [foto, setFoto] = useState(null); 
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', perfil: 'membro' });
-
+  
+  const [editandoId, setEditandoId] = useState(null); // Estado para controlar a edição
   const [termoBusca, setTermoBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
@@ -39,27 +41,27 @@ function App() {
   // BUSCA DE DADOS
   // ==========================================
   const carregarDados = async () => {
-  if (!usuarioLogado) return;
+    if (!usuarioLogado) return;
 
-  setCarregando(true); // Liga o loading
-  try {
-    const resItens = await axios.get('http://localhost:3001/itens');
-    const resCat = await axios.get('http://localhost:3001/categorias');
-    setItens(resItens.data);
-    setCategorias(resCat.data);
-    
-    if (usuarioLogado.perfil === 'admin') {
-      const resUsuarios = await axios.get('http://localhost:3001/usuarios');
-      const resEstat = await axios.get('http://localhost:3001/estatisticas');
-      setUsuarios(resUsuarios.data);
-      setEstatisticas(resEstat.data);
+    setCarregando(true); 
+    try {
+      const resItens = await axios.get('http://localhost:3001/itens');
+      const resCat = await axios.get('http://localhost:3001/categorias');
+      setItens(resItens.data);
+      setCategorias(resCat.data);
+      
+      if (usuarioLogado.perfil === 'admin') {
+        const resUsuarios = await axios.get('http://localhost:3001/usuarios');
+        const resEstat = await axios.get('http://localhost:3001/estatisticas');
+        setUsuarios(resUsuarios.data);
+        setEstatisticas(resEstat.data);
+      }
+    } catch (erro) {
+      toast.error('Erro ao buscar dados do servidor!');
+    } finally {
+      setCarregando(false); 
     }
-  } catch (erro) {
-    toast.error('Erro ao buscar dados do servidor!');
-  } finally {
-    setCarregando(false); // Desliga o loading no final
-  }
-};
+  };
 
   useEffect(() => { 
     carregarDados(); 
@@ -89,6 +91,27 @@ function App() {
 
   const handleFileChange = (e) => setFoto(e.target.files[0]);
 
+  // Prepara o formulário para editar um item existente
+  const prepararEdicao = (item) => {
+    setEditandoId(item.id);
+    setNovoItem({
+      titulo: item.titulo,
+      tipo: item.tipo,
+      consumido: item.consumido,
+      categoria_id: item.categoria_id,
+      foto_url_existente: item.foto_url 
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
+  };
+
+  // Limpa o formulário e sai do modo de edição
+  const cancelarEdicao = () => {
+    setEditandoId(null);
+    setNovoItem({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
+    setFoto(null);
+    if (fileInputRef.current) fileInputRef.current.value = ""; 
+  };
+
   const handleItemSubmit = (e) => {
     e.preventDefault();
     const formData = new FormData();
@@ -98,19 +121,39 @@ function App() {
     formData.append('consumido', novoItem.consumido);
     if (foto) formData.append('foto', foto); 
 
-    axios.post('http://localhost:3001/itens', formData, { headers: { 'Content-Type': 'multipart/form-data' }})
-    .then(() => {
-      carregarDados(); 
-      setNovoItem({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
-      setFoto(null);
-      if (fileInputRef.current) fileInputRef.current.value = ""; 
-      toast.success('Item adicionado ao acervo!');
-    }).catch(() => toast.error('Erro ao salvar o item.'));
+    if (editandoId) {
+      // MODO EDIÇÃO
+      if (novoItem.foto_url_existente) formData.append('foto_url_existente', novoItem.foto_url_existente);
+      
+      axios.put(`http://localhost:3001/itens/${editandoId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+        .then(() => {
+          carregarDados(); 
+          cancelarEdicao();
+          toast.success('Item atualizado com sucesso!');
+        }).catch(() => toast.error('Erro ao atualizar o item.'));
+    } else {
+      // MODO CRIAÇÃO
+      axios.post('http://localhost:3001/itens', formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+        .then(() => {
+          carregarDados(); 
+          cancelarEdicao();
+          toast.success('Item adicionado ao acervo!');
+        }).catch(() => toast.error('Erro ao salvar o item.'));
+    }
   };
 
   const deletarItem = (id) => {
     if (window.confirm("Remover este item do acervo?")) {
-      axios.delete(`http://localhost:3001/itens/${id}`).then(() => carregarDados());
+      axios.delete(`http://localhost:3001/itens/${id}`)
+        .then(() => {
+          carregarDados();
+          toast.success('Item removido com sucesso!');
+        })
+        .catch((erro) => {
+          // Apanha a mensagem de bloqueio enviada pelo Node.js e mostra-a no ecrã
+          const mensagemErro = erro.response?.data?.erro || 'Erro desconhecido ao remover o item.';
+          toast.error(mensagemErro);
+        });
     }
   };
 
@@ -131,24 +174,33 @@ function App() {
   const handleSelectUsuario = (itemId, usuarioId) => setUsuarioSelecionado({ ...usuarioSelecionado, [itemId]: usuarioId });
 
   const registrarEmprestimo = (itemId) => {
-    const usuarioId = usuarioSelecionado[itemId];
-    if (!usuarioId) return toast.warning("Selecione um usuário para emprestar!");
+    const usuarioId = parseInt(usuarioSelecionado[itemId], 10);
     
-    axios.post(`${API_URL}/emprestar`, { item_id: itemId, usuario_id: usuarioId })
+    if (!usuarioId || isNaN(usuarioId)) {
+      return toast.warning("Selecione um utilizador na lista antes de emprestar!");
+    }
+    
+    const idToast = toast.loading("Registando empréstimo...");
+
+    axios.post(`http://localhost:3001/emprestar`, { item_id: itemId, usuario_id: usuarioId })
       .then(() => { 
         carregarDados(); 
-        toast.success('Empréstimo registrado!'); 
+        toast.update(idToast, { render: "Empréstimo registado com sucesso!", type: "success", isLoading: false, autoClose: 3000 });
+        setUsuarioSelecionado({ ...usuarioSelecionado, [itemId]: "" });
       })
       .catch((erro) => {
-        // Agora mostramos o erro que o backend mandar!
-        const msg = erro.response?.data?.erro || 'Erro ao registrar empréstimo.';
-        toast.error(msg);
+        const msg = erro.response?.data?.erro || 'Erro ao comunicar com o servidor.';
+        toast.update(idToast, { render: `Erro: ${msg}`, type: "error", isLoading: false, autoClose: 4000 });
       });
   };
 
   const registrarDevolucao = (emprestimoId) => {
     axios.put(`http://localhost:3001/devolver/${emprestimoId}`)
-      .then(() => { carregarDados(); toast.success('Devolução registrada!'); });
+      .then(() => { 
+        carregarDados(); 
+        toast.success('Devolução registada!'); 
+      })
+      .catch(() => toast.error('Erro ao registar devolução.'));
   };
 
   const toggleHistorico = (itemId) => {
@@ -158,7 +210,11 @@ function App() {
       setHistoricos(novosHistoricos);
     } else {
       axios.get(`http://localhost:3001/itens/${itemId}/historico`)
-        .then(res => setHistoricos({ ...historicos, [itemId]: res.data }));
+        .then(res => {
+          const dadosSeguros = Array.isArray(res.data) ? res.data : [];
+          setHistoricos({ ...historicos, [itemId]: dadosSeguros });
+        })
+        .catch(() => toast.error('Erro ao comunicar com o servidor de histórico.'));
     }
   };
 
@@ -169,10 +225,8 @@ function App() {
     setNovoUsuario({ ...novoUsuario, [e.target.name]: e.target.value });
   };
 
- const handleUsuarioSubmit = (e) => {
+  const handleUsuarioSubmit = (e) => {
     e.preventDefault();
-    
-    // Vamos usar a URL fixa temporariamente para garantir que não é erro de variável
     axios.post('http://localhost:3001/usuarios', novoUsuario)
       .then(() => {
         toast.success('Membro cadastrado com sucesso!');
@@ -180,16 +234,22 @@ function App() {
         setNovoUsuario({ nome: '', email: '', senha: '', perfil: 'membro' });
       })
       .catch((erro) => {
-        // Isso vai jogar o erro na tela para nós lermos!
         const mensagemErro = erro.response?.data?.erro || erro.message || 'Erro desconhecido';
         toast.error(`Erro: ${mensagemErro}`);
-        console.error("🕵️ Detalhe do erro:", erro);
       });
   };
 
   const deletarUsuario = (id) => {
-    if (window.confirm("Tem certeza que deseja excluir este membro?")) {
-      axios.delete(`http://localhost:3001/usuarios/${id}`).then(() => carregarDados());
+    if (window.confirm("Tem a certeza que deseja excluir este membro?")) {
+      axios.delete(`http://localhost:3001/usuarios/${id}`)
+        .then(() => {
+          carregarDados();
+          toast.success('Membro removido com sucesso!');
+        })
+        .catch((erro) => {
+          const mensagemErro = erro.response?.data?.erro || 'Erro desconhecido ao remover.';
+          toast.error(mensagemErro);
+        });
     }
   };
 
@@ -228,17 +288,12 @@ function App() {
             <input type="password" placeholder="Senha (ex: 123456)" value={loginForm.senha} onChange={e => setLoginForm({...loginForm, senha: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }} required />
             <button type="submit" style={{ padding: '15px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}>Entrar</button>
           </form>
-          <div style={{ marginTop: '20px', fontSize: '0.85rem', color: '#888', textAlign: 'left', backgroundColor: '#111', padding: '10px', borderRadius: '6px' }}>
-            <strong>Dados de Teste:</strong><br/>
-            Admin: joao@email.com (Senha: 123456)<br/>
-            Membro: maria@email.com (Senha: 123456)
-          </div>
         </div>
+        <ToastContainer theme="dark" position="bottom-right" />
       </div>
     );
   }
 
-  // Verifica se o usuário atual é admin
   const isAdmin = usuarioLogado.perfil === 'admin';
 
   // ==========================================
@@ -253,7 +308,6 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
           <button onClick={() => setTelaAtual('acervo')} className={`nav-btn ${telaAtual === 'acervo' ? 'active' : ''}`}>📚 Acervo</button>
           
-          {/* Apenas Administrador vê os botões de Membros e Relatórios */}
           {isAdmin && (
             <>
               <button onClick={() => setTelaAtual('membros')} className={`nav-btn ${telaAtual === 'membros' ? 'active' : ''}`}>👥 Membros</button>
@@ -262,9 +316,9 @@ function App() {
           )}
 
           <button onClick={() => {
-    setUsuarioLogado(null);
-    localStorage.removeItem('@geektrack:user'); // Limpa a memória!
-}} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+            setUsuarioLogado(null);
+            localStorage.removeItem('@geektrack:user');
+          }} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
         </div>
       </header>
 
@@ -273,7 +327,6 @@ function App() {
       {/* ======================================= */}
       {telaAtual === 'acervo' && (
         <>
-          {/* Formulário de Cadastro e Dashboard Resumo são apenas para Admin */}
           {isAdmin && (
             <>
               <div className="dashboard">
@@ -283,22 +336,35 @@ function App() {
               </div>
 
               <div className="form-container">
-                <h2>Cadastrar Novo Item</h2>
+                <h2>{editandoId ? '✏️ Editando Item...' : 'Cadastrar Novo Item'}</h2>
                 <form onSubmit={handleItemSubmit} className="geek-form">
                   <div className="form-group"><input type="text" name="titulo" value={novoItem.titulo} onChange={handleItemInputChange} placeholder="Título da obra" required /></div>
                   <div className="form-row">
                     <select name="tipo" value={novoItem.tipo} onChange={handleItemInputChange} required>
-                      <option value="">Formato da Mídia...</option><option value="Vinil">Vinil</option><option value="Jogo">Jogo Físico</option><option value="Quadrinho">Quadrinho/Mangá</option><option value="Filme">Filme (DVD/Blu-Ray)</option><option value="CD">CD</option><option value="Livro">Livro</option>
+                      <option value="">Formato da Mídia...</option><option value="Vinil">Vinil</option><option value="Jogo Físico">Jogo Físico</option><option value="Quadrinho/Mangá">Quadrinho/Mangá</option><option value="Filme (DVD/Blu-Ray)">Filme (DVD/Blu-Ray)</option><option value="CD">CD</option><option value="Livro">Livro</option>
                     </select>
                     <select name="categoria_id" value={novoItem.categoria_id} onChange={handleItemInputChange} required>
                       <option value="">Categoria...</option>{categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
                     </select>
                   </div>
                   <div className="form-row">
-                    <div className="file-input-wrapper"><input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} /></div>
+                    <div className="file-input-wrapper">
+                      <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} />
+                      {editandoId && <small style={{display: 'block', marginTop: '5px', color: '#aaa'}}>Deixe em branco para manter a foto atual.</small>}
+                    </div>
                     <label className="checkbox-label"><input type="checkbox" name="consumido" checked={novoItem.consumido} onChange={handleItemInputChange} />Já consumi</label>
                   </div>
-                  <button type="submit" className="btn-salvar">Adicionar ao Acervo</button>
+                  
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="submit" className="btn-salvar" style={{ flex: 2 }}>
+                      {editandoId ? 'Guardar Alterações' : 'Adicionar ao Acervo'}
+                    </button>
+                    {editandoId && (
+                      <button type="button" onClick={cancelarEdicao} className="btn-outline" style={{ flex: 1, padding: '15px', borderRadius: '6px' }}>
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
             </>
@@ -338,7 +404,6 @@ function App() {
                       <h3 className="item-title">{item.titulo}</h3>
                       <p className="item-meta">{item.categoria_nome} • {item.tipo}</p>
                       
-                      {/* Área de Status de Empréstimo */}
                       <div className="emprestimo-box" style={{ backgroundColor: item.emprestado_para ? 'rgba(255,171,0,0.1)' : 'rgba(76,175,80,0.1)' }}>
                         {item.emprestado_para ? (
                           <div className="emprestado-status">
@@ -364,18 +429,29 @@ function App() {
                         )}
                       </div>
 
-                      {/* Botões de Ação (Apenas Admin) */}
                       {isAdmin && (
                         <>
                           <div className="card-actions" style={{ marginTop: '10px' }}>
                             <button onClick={() => alternarConsumido(item)} className="btn-outline">🔄 Status</button>
+                            <button onClick={() => prepararEdicao(item)} className="btn-outline">✏️ Editar</button>
                             <button onClick={() => toggleHistorico(item.id)} className="btn-outline">📝 Histórico</button>
                             <button onClick={() => deletarItem(item.id)} className="btn-danger">🗑️ Excluir</button>
                           </div>
-                          {historicos[item.id] && (
+                          
+                          {historicos[item.id] && Array.isArray(historicos[item.id]) && (
                             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#111', borderRadius: '6px', fontSize: '0.85rem' }}>
                               <strong style={{ display: 'block', marginBottom: '5px' }}>Histórico:</strong>
-                              {historicos[item.id].length === 0 ? <p style={{ margin: 0, color: '#888' }}>Nenhum empréstimo.</p> : <ul style={{ paddingLeft: '15px', margin: 0, color: '#aaa' }}>{historicos[item.id].map((h, i) => <li key={i}><strong>{h.usuario_nome}</strong> ({formatarData(h.data_emprestimo)} a {h.data_devolucao ? formatarData(h.data_devolucao) : 'Atual'})</li>)}</ul>}
+                              {historicos[item.id].length === 0 ? (
+                                <p style={{ margin: 0, color: '#888' }}>Nenhum empréstimo registado.</p>
+                              ) : (
+                                <ul style={{ paddingLeft: '15px', margin: 0, color: '#aaa' }}>
+                                  {historicos[item.id].map((h, i) => (
+                                    <li key={i}>
+                                      <strong>{h.usuario_nome}</strong> ({formatarData(h.data_emprestimo)} a {h.data_devolucao ? formatarData(h.data_devolucao) : 'Atual'})
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
                             </div>
                           )}
                         </>
@@ -398,7 +474,7 @@ function App() {
             <h2>Cadastrar Novo Membro</h2>
             <form onSubmit={handleUsuarioSubmit} className="geek-form">
               <input type="text" name="nome" value={novoUsuario.nome} onChange={handleUsuarioInputChange} placeholder="Nome completo" required />
-              <input type="email" name="email" value={novoUsuario.email} onChange={handleUsuarioInputChange} placeholder="E-mail de contato" required />
+              <input type="email" name="email" value={novoUsuario.email} onChange={handleUsuarioInputChange} placeholder="E-mail de contacto" required />
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input type="text" name="senha" value={novoUsuario.senha} onChange={handleUsuarioInputChange} placeholder="Senha (vazio = 123456)" style={{ flex: 1 }} />
                 <select name="perfil" value={novoUsuario.perfil} onChange={handleUsuarioInputChange} style={{ flex: 1 }}>
@@ -411,7 +487,7 @@ function App() {
           </div>
 
           <div className="acervo-section" style={{ backgroundColor: '#1e1e1e', padding: '20px', borderRadius: '12px' }}>
-            <h2>Membros Cadastrados ({usuarios.length})</h2>
+            <h2>Membros Registados ({usuarios.length})</h2>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {usuarios.map(user => (
                 <li key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid #333' }}>
@@ -431,12 +507,26 @@ function App() {
       {/* TELA 3: DASHBOARD (Apenas Admin)        */}
       {/* ======================================= */}
       {telaAtual === 'dashboard' && isAdmin && estatisticas && (
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
           
+          <div style={{ backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
+             <h2 style={{ marginTop: 0, marginBottom: '10px' }}>📈 Saúde do Acervo</h2>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#aaa' }}>
+                <span>Disponível: {((itensDisponiveis / totalItens) * 100 || 0).toFixed(1)}%</span>
+                <span>Emprestado: {((itensEmprestados / totalItens) * 100 || 0).toFixed(1)}%</span>
+             </div>
+             <div style={{ height: '24px', backgroundColor: '#ffab00', borderRadius: '12px', overflow: 'hidden', display: 'flex' }}>
+                <div style={{ width: `${(itensDisponiveis / totalItens) * 100}%`, backgroundColor: '#00c853', transition: 'width 1s ease-in-out' }}></div>
+             </div>
+             <p style={{ fontSize: '0.85rem', color: '#888', marginTop: '10px', textAlign: 'center' }}>
+                A barra verde representa os itens que estão fisicamente na Associação neste momento.
+             </p>
+          </div>
+
           <div style={{ backgroundColor: '#ff1744', padding: '20px', borderRadius: '12px', marginBottom: '30px', color: 'white' }}>
             <h2 style={{ marginTop: 0 }}>⚠️ Alertas de Inadimplência</h2>
             {estatisticas.atrasados.length === 0 ? (
-              <p style={{ margin: 0, fontSize: '1.1rem' }}>Fantástico! Todos os itens estão dentro do prazo de 14 dias.</p>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>✅ Fantástico! Todos os itens estão dentro do prazo de 14 dias.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {estatisticas.atrasados.map((item, i) => (
@@ -459,7 +549,7 @@ function App() {
                     Emprestado {item.total_vezes} vezes
                   </li>
                 ))}
-                {estatisticas.topItens.length === 0 && <p>Nenhum empréstimo registrado.</p>}
+                {estatisticas.topItens.length === 0 && <p>Nenhum empréstimo registado ainda.</p>}
               </ol>
             </div>
 
@@ -469,16 +559,17 @@ function App() {
                 {estatisticas.topUsuarios.map((user, i) => (
                   <li key={i} style={{ marginBottom: '15px' }}>
                     <strong style={{ color: 'white', fontSize: '1.1rem' }}>{user.nome}</strong> <br/>
-                    Requereu {user.total_pegos} itens
+                    Pegou {user.total_pegos} itens
                   </li>
                 ))}
-                {estatisticas.topUsuarios.length === 0 && <p>Nenhum membro ativo.</p>}
+                {estatisticas.topUsuarios.length === 0 && <p>Nenhum membro ativo ainda.</p>}
               </ol>
             </div>
           </div>
         </div>
       )}
 
+      <ToastContainer theme="dark" position="bottom-right" />
     </div>
   );
 }

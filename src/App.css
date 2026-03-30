@@ -236,6 +236,51 @@ input[type="text"]:focus, select:focus {
 .btn-danger:hover { background-color: #b71c1c; }
 
 /* ========================================== */
+/* REFINAMENTOS DE UX / USABILIDADE           */
+/* ========================================== */
+
+/* Efeito Glow (Luz) ao passar o mouse nos cards */
+.item-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid transparent; /* Prepara para a borda brilhar */
+}
+
+.item-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(98, 0, 234, 0.2);
+  border: 1px solid rgba(98, 0, 234, 0.5); /* Borda roxa suave */
+}
+
+/* Deixa a caixa de pesquisa com mais destaque */
+.acervo-section input[type="text"]:focus,
+.acervo-section select:focus {
+  box-shadow: 0 0 0 3px rgba(98, 0, 234, 0.3);
+  border-color: var(--primary-color) !important;
+}
+
+/* Botões do Menu Superior mais estilosos */
+.nav-btn {
+  padding: 12px 24px;
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.nav-btn.active {
+  background-color: rgba(98, 0, 234, 0.1);
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+}
+/* ========================================== */
 /* MODO CELULAR / RESPONSIVO                  */
 /* ========================================== */
 @media (max-width: 768px) {
