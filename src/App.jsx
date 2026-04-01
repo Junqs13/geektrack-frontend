@@ -45,14 +45,14 @@ function App() {
 
     setCarregando(true); 
     try {
-      const resItens = await axios.get('${API_URL}/itens');
-      const resCat = await axios.get('${API_URL}/categorias');
+      const resItens = await axios.get(`${API_URL}/itens`);
+      const resCat = await axios.get(`${API_URL}/categorias`);
       setItens(resItens.data);
       setCategorias(resCat.data);
       
       if (usuarioLogado.perfil === 'admin') {
-        const resUsuarios = await axios.get('${API_URL}/usuarios');
-        const resEstat = await axios.get('${API_URL}/estatisticas');
+        const resUsuarios = await axios.get(`${API_URL}/usuarios`);
+        const resEstat = await axios.get(`${API_URL}/estatisticas`);
         setUsuarios(resUsuarios.data);
         setEstatisticas(resEstat.data);
       }
@@ -72,7 +72,7 @@ function App() {
   // ==========================================
   const handleLogin = (e) => {
     e.preventDefault();
-    axios.post('${API_URL}/login', loginForm)
+    axios.post(`${API_URL}/login`, loginForm)
       .then(res => {
         setUsuarioLogado(res.data);
         localStorage.setItem('@geektrack:user', JSON.stringify(res.data));
@@ -133,7 +133,7 @@ function App() {
         }).catch(() => toast.error('Erro ao atualizar o item.'));
     } else {
       // MODO CRIAÇÃO
-      axios.post('${API_URL}/itens', formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+      axios.post(`${API_URL}/itens`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
         .then(() => {
           carregarDados(); 
           cancelarEdicao();
@@ -227,7 +227,7 @@ function App() {
 
   const handleUsuarioSubmit = (e) => {
     e.preventDefault();
-    axios.post('${API_URL}/usuarios', novoUsuario)
+    axios.post(`${API_URL}/usuarios`, novoUsuario)
       .then(() => {
         toast.success('Membro cadastrado com sucesso!');
         carregarDados();
