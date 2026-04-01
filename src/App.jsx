@@ -45,14 +45,14 @@ function App() {
 
     setCarregando(true); 
     try {
-      const resItens = await axios.get('http://localhost:3001/itens');
-      const resCat = await axios.get('http://localhost:3001/categorias');
+      const resItens = await axios.get('${API_URL}/itens');
+      const resCat = await axios.get('${API_URL}/categorias');
       setItens(resItens.data);
       setCategorias(resCat.data);
       
       if (usuarioLogado.perfil === 'admin') {
-        const resUsuarios = await axios.get('http://localhost:3001/usuarios');
-        const resEstat = await axios.get('http://localhost:3001/estatisticas');
+        const resUsuarios = await axios.get('${API_URL}/usuarios');
+        const resEstat = await axios.get('${API_URL}/estatisticas');
         setUsuarios(resUsuarios.data);
         setEstatisticas(resEstat.data);
       }
@@ -72,7 +72,7 @@ function App() {
   // ==========================================
   const handleLogin = (e) => {
     e.preventDefault();
-    axios.post('http://localhost:3001/login', loginForm)
+    axios.post('${API_URL}/login', loginForm)
       .then(res => {
         setUsuarioLogado(res.data);
         localStorage.setItem('@geektrack:user', JSON.stringify(res.data));
@@ -125,7 +125,7 @@ function App() {
       // MODO EDIÇÃO
       if (novoItem.foto_url_existente) formData.append('foto_url_existente', novoItem.foto_url_existente);
       
-      axios.put(`http://localhost:3001/itens/${editandoId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+      axios.put(`${API_URL}/itens/${editandoId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
         .then(() => {
           carregarDados(); 
           cancelarEdicao();
@@ -133,7 +133,7 @@ function App() {
         }).catch(() => toast.error('Erro ao atualizar o item.'));
     } else {
       // MODO CRIAÇÃO
-      axios.post('http://localhost:3001/itens', formData, { headers: { 'Content-Type': 'multipart/form-data' }})
+      axios.post('${API_URL}/itens', formData, { headers: { 'Content-Type': 'multipart/form-data' }})
         .then(() => {
           carregarDados(); 
           cancelarEdicao();
@@ -144,7 +144,7 @@ function App() {
 
   const deletarItem = (id) => {
     if (window.confirm("Remover este item do acervo?")) {
-      axios.delete(`http://localhost:3001/itens/${id}`)
+      axios.delete(`${API_URL}/itens/${id}`)
         .then(() => {
           carregarDados();
           toast.success('Item removido com sucesso!');
@@ -165,7 +165,7 @@ function App() {
     formData.append('consumido', !item.consumido);
     if (item.foto_url) formData.append('foto_url_existente', item.foto_url);
     
-    axios.put(`http://localhost:3001/itens/${item.id}`, formData).then(() => carregarDados());
+    axios.put(`${API_URL}/itens/${item.id}`, formData).then(() => carregarDados());
   };
 
   // ==========================================
@@ -182,7 +182,7 @@ function App() {
     
     const idToast = toast.loading("Registando empréstimo...");
 
-    axios.post(`http://localhost:3001/emprestar`, { item_id: itemId, usuario_id: usuarioId })
+    axios.post(`${API_URL}/emprestar`, { item_id: itemId, usuario_id: usuarioId })
       .then(() => { 
         carregarDados(); 
         toast.update(idToast, { render: "Empréstimo registado com sucesso!", type: "success", isLoading: false, autoClose: 3000 });
@@ -195,7 +195,7 @@ function App() {
   };
 
   const registrarDevolucao = (emprestimoId) => {
-    axios.put(`http://localhost:3001/devolver/${emprestimoId}`)
+    axios.put(`${API_URL}/devolver/${emprestimoId}`)
       .then(() => { 
         carregarDados(); 
         toast.success('Devolução registada!'); 
@@ -209,7 +209,7 @@ function App() {
       delete novosHistoricos[itemId];
       setHistoricos(novosHistoricos);
     } else {
-      axios.get(`http://localhost:3001/itens/${itemId}/historico`)
+      axios.get(`${API_URL}/itens/${itemId}/historico`)
         .then(res => {
           const dadosSeguros = Array.isArray(res.data) ? res.data : [];
           setHistoricos({ ...historicos, [itemId]: dadosSeguros });
@@ -227,7 +227,7 @@ function App() {
 
   const handleUsuarioSubmit = (e) => {
     e.preventDefault();
-    axios.post('http://localhost:3001/usuarios', novoUsuario)
+    axios.post('${API_URL}/usuarios', novoUsuario)
       .then(() => {
         toast.success('Membro cadastrado com sucesso!');
         carregarDados();
@@ -241,7 +241,7 @@ function App() {
 
   const deletarUsuario = (id) => {
     if (window.confirm("Tem a certeza que deseja excluir este membro?")) {
-      axios.delete(`http://localhost:3001/usuarios/${id}`)
+      axios.delete(`${API_URL}/usuarios/${id}`)
         .then(() => {
           carregarDados();
           toast.success('Membro removido com sucesso!');
