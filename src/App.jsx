@@ -1,68 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // O CSS das notificações
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
-const API_URL = import.meta.env.VITE_API_URL; // Ou process.env.REACT_APP_API_URL se for CRA
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
-  // ==========================================
-  // ESTADOS DE AUTENTICAÇÃO
-  // ==========================================
+  // Estados de Autenticação e Navegação
   const [usuarioLogado, setUsuarioLogado] = useState(() => {
     const salvo = localStorage.getItem('@geektrack:user');
     return salvo ? JSON.parse(salvo) : null;
   });
   const [loginForm, setLoginForm] = useState({ email: '', senha: '' });
-
   const [mostrarLogin, setMostrarLogin] = useState(false);
   const [mostrarPreCadastro, setMostrarPreCadastro] = useState(false);
   const [preCadastroForm, setPreCadastroForm] = useState({ nome: '', email: '', mensagem: '' }); 
-  // ==========================================
-  // ESTADOS DA APLICAÇÃO
-  // ==========================================
+  const isAdmin = usuarioLogado?.perfil === 'admin';
   const [telaAtual, setTelaAtual] = useState('acervo'); 
+
+  // Estados de Dados
   const [itens, setItens] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [estatisticas, setEstatisticas] = useState(null); 
   const [usuarioSelecionado, setUsuarioSelecionado] = useState({});
   const [historicos, setHistoricos] = useState({}); 
+
+  // Estados de Formulários e Filtros
   const fileInputRef = useRef(null); 
-  const [carregando, setCarregando] = useState(false);
-  
   const [novoItem, setNovoItem] = useState({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
   const [foto, setFoto] = useState(null); 
   const [novoUsuario, setNovoUsuario] = useState({ nome: '', email: '', senha: '', perfil: 'membro' });
-  
-  const [editandoId, setEditandoId] = useState(null); // Estado para controlar a edição
+  const [editandoId, setEditandoId] = useState(null);
   const [termoBusca, setTermoBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
 
-  // ==========================================
-  // BUSCA DE DADOS
-  // ==========================================
   const carregarDados = async () => {
     if (!usuarioLogado) return;
-
-    setCarregando(true); 
     try {
       const resItens = await axios.get(`${API_URL}/itens`);
       const resCat = await axios.get(`${API_URL}/categorias`);
       setItens(resItens.data);
       setCategorias(resCat.data);
       
-      if (usuarioLogado.perfil === 'admin') {
+      if (isAdmin) {
         const resUsuarios = await axios.get(`${API_URL}/usuarios`);
         const resEstat = await axios.get(`${API_URL}/estatisticas`);
         setUsuarios(resUsuarios.data);
         setEstatisticas(resEstat.data);
       }
     } catch (erro) {
-      toast.error('Erro ao buscar dados do servidor!');
-    } finally {
-      setCarregando(false); 
+      toast.error('Erro ao buscar dados do servidor.');
     }
   };
 
@@ -70,21 +60,14 @@ function App() {
     carregarDados(); 
   }, [usuarioLogado]);
   
-// ==========================================
-  // FUNÇÃO DE PRÉ-CADASTRO (Contato)
-  // ==========================================
+  // Handlers de Autenticação
   const handlePreCadastroSubmit = (e) => {
     e.preventDefault();
-    // Simula o envio do e-mail/pedido com uma notificação de sucesso
-    toast.success(`Excelente, ${preCadastroForm.nome}! O seu pedido foi enviado para a diretoria da Associação. Entraremos em contato em breve!`, { autoClose: 6000 });
-    
-    // Limpa o formulário e volta para a tela inicial
+    toast.success(`Excelente, ${preCadastroForm.nome}! O seu pedido foi enviado para a diretoria.`, { autoClose: 6000 });
     setPreCadastroForm({ nome: '', email: '', mensagem: '' });
     setMostrarPreCadastro(false);
   };
-  // ==========================================
-  // FUNÇÃO DE LOGIN
-  // ==========================================
+
   const handleLogin = (e) => {
     e.preventDefault();
     axios.post(`${API_URL}/login`, loginForm)
@@ -93,20 +76,15 @@ function App() {
         localStorage.setItem('@geektrack:user', JSON.stringify(res.data));
         setTelaAtual('acervo');
       })
-      .catch(() => toast.error('E-mail ou senha incorretos!'));
+      .catch(() => toast.error('E-mail ou senha incorretos.'));
   };
 
-  // ==========================================
-  // FUNÇÕES DE ITENS (ACERVO)
-  // ==========================================
+  // Handlers de Itens
   const handleItemInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setNovoItem({ ...novoItem, [name]: type === 'checkbox' ? checked : value });
   };
 
-  const handleFileChange = (e) => setFoto(e.target.files[0]);
-
-  // Prepara o formulário para editar um item existente
   const prepararEdicao = (item) => {
     setEditandoId(item.id);
     setNovoItem({
@@ -119,7 +97,6 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
 
-  // Limpa o formulário e sai do modo de edição
   const cancelarEdicao = () => {
     setEditandoId(null);
     setNovoItem({ titulo: '', tipo: '', consumido: false, categoria_id: '' });
@@ -136,25 +113,18 @@ function App() {
     formData.append('consumido', novoItem.consumido);
     if (foto) formData.append('foto', foto); 
 
-    if (editandoId) {
-      // MODO EDIÇÃO
-      if (novoItem.foto_url_existente) formData.append('foto_url_existente', novoItem.foto_url_existente);
-      
-      axios.put(`${API_URL}/itens/${editandoId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
-        .then(() => {
-          carregarDados(); 
-          cancelarEdicao();
-          toast.success('Item atualizado com sucesso!');
-        }).catch(() => toast.error('Erro ao atualizar o item.'));
-    } else {
-      // MODO CRIAÇÃO
-      axios.post(`${API_URL}/itens`, formData, { headers: { 'Content-Type': 'multipart/form-data' }})
-        .then(() => {
-          carregarDados(); 
-          cancelarEdicao();
-          toast.success('Item adicionado ao acervo!');
-        }).catch(() => toast.error('Erro ao salvar o item.'));
-    }
+    const request = editandoId
+      ? axios.put(`${API_URL}/itens/${editandoId}`, (() => {
+          if (novoItem.foto_url_existente) formData.append('foto_url_existente', novoItem.foto_url_existente);
+          return formData;
+        })(), { headers: { 'Content-Type': 'multipart/form-data' }})
+      : axios.post(`${API_URL}/itens`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
+
+    request.then(() => {
+      carregarDados(); 
+      cancelarEdicao();
+      toast.success(editandoId ? 'Item atualizado.' : 'Item adicionado.');
+    }).catch(() => toast.error('Erro ao salvar o item.'));
   };
 
   const deletarItem = (id) => {
@@ -164,11 +134,7 @@ function App() {
           carregarDados();
           toast.success('Item removido com sucesso!');
         })
-        .catch((erro) => {
-          // Apanha a mensagem de bloqueio enviada pelo Node.js e mostra-a no ecrã
-          const mensagemErro = erro.response?.data?.erro || 'Erro desconhecido ao remover o item.';
-          toast.error(mensagemErro);
-        });
+        .catch((erro) => toast.error(erro.response?.data?.erro || 'Erro ao remover o item.'));
     }
   };
 
@@ -179,42 +145,26 @@ function App() {
     formData.append('categoria_id', item.categoria_id);
     formData.append('consumido', !item.consumido);
     if (item.foto_url) formData.append('foto_url_existente', item.foto_url);
-    
     axios.put(`${API_URL}/itens/${item.id}`, formData).then(() => carregarDados());
   };
 
-  // ==========================================
-  // FUNÇÕES DE EMPRÉSTIMOS E DEVOLUÇÕES
-  // ==========================================
-  const handleSelectUsuario = (itemId, usuarioId) => setUsuarioSelecionado({ ...usuarioSelecionado, [itemId]: usuarioId });
-
+  // Handlers de Empréstimos
   const registrarEmprestimo = (itemId) => {
     const usuarioId = parseInt(usuarioSelecionado[itemId], 10);
+    if (!usuarioId) return toast.warning("Selecione um utilizador!");
     
-    if (!usuarioId || isNaN(usuarioId)) {
-      return toast.warning("Selecione um utilizador na lista antes de emprestar!");
-    }
-    
-    const idToast = toast.loading("Registando empréstimo...");
-
     axios.post(`${API_URL}/emprestar`, { item_id: itemId, usuario_id: usuarioId })
       .then(() => { 
         carregarDados(); 
-        toast.update(idToast, { render: "Empréstimo registado com sucesso!", type: "success", isLoading: false, autoClose: 3000 });
+        toast.success("Empréstimo registado!");
         setUsuarioSelecionado({ ...usuarioSelecionado, [itemId]: "" });
       })
-      .catch((erro) => {
-        const msg = erro.response?.data?.erro || 'Erro ao comunicar com o servidor.';
-        toast.update(idToast, { render: `Erro: ${msg}`, type: "error", isLoading: false, autoClose: 4000 });
-      });
+      .catch((erro) => toast.error(erro.response?.data?.erro || 'Erro ao registar empréstimo.'));
   };
 
   const registrarDevolucao = (emprestimoId) => {
     axios.put(`${API_URL}/devolver/${emprestimoId}`)
-      .then(() => { 
-        carregarDados(); 
-        toast.success('Devolução registada!'); 
-      })
+      .then(() => { carregarDados(); toast.success('Devolução registada!'); })
       .catch(() => toast.error('Erro ao registar devolução.'));
   };
 
@@ -225,57 +175,33 @@ function App() {
       setHistoricos(novosHistoricos);
     } else {
       axios.get(`${API_URL}/itens/${itemId}/historico`)
-        .then(res => {
-          const dadosSeguros = Array.isArray(res.data) ? res.data : [];
-          setHistoricos({ ...historicos, [itemId]: dadosSeguros });
-        })
-        .catch(() => toast.error('Erro ao comunicar com o servidor de histórico.'));
+        .then(res => setHistoricos({ ...historicos, [itemId]: Array.isArray(res.data) ? res.data : [] }))
+        .catch(() => toast.error('Erro ao buscar histórico.'));
     }
   };
 
-  // ==========================================
-  // FUNÇÕES DE MEMBROS (USUÁRIOS)
-  // ==========================================
-  const handleUsuarioInputChange = (e) => {
-    setNovoUsuario({ ...novoUsuario, [e.target.name]: e.target.value });
-  };
-
+  // Handlers de Usuários
   const handleUsuarioSubmit = (e) => {
     e.preventDefault();
     axios.post(`${API_URL}/usuarios`, novoUsuario)
       .then(() => {
-        toast.success('Membro cadastrado com sucesso!');
+        toast.success('Membro cadastrado.');
         carregarDados();
         setNovoUsuario({ nome: '', email: '', senha: '', perfil: 'membro' });
       })
-      .catch((erro) => {
-        const mensagemErro = erro.response?.data?.erro || erro.message || 'Erro desconhecido';
-        toast.error(`Erro: ${mensagemErro}`);
-      });
+      .catch((erro) => toast.error(erro.response?.data?.erro || 'Erro ao cadastrar.'));
   };
 
   const deletarUsuario = (id) => {
-    if (window.confirm("Tem a certeza que deseja excluir este membro?")) {
+    if (window.confirm("Deseja excluir este membro?")) {
       axios.delete(`${API_URL}/usuarios/${id}`)
-        .then(() => {
-          carregarDados();
-          toast.success('Membro removido com sucesso!');
-        })
-        .catch((erro) => {
-          const mensagemErro = erro.response?.data?.erro || 'Erro desconhecido ao remover.';
-          toast.error(mensagemErro);
-        });
+        .then(() => { carregarDados(); toast.success('Membro removido.'); })
+        .catch((erro) => toast.error(erro.response?.data?.erro || 'Erro ao remover.'));
     }
   };
 
-  // ==========================================
-  // CÁLCULOS E FILTROS
-  // ==========================================
-  const formatarData = (dataStr) => {
-    if (!dataStr) return '';
-    return new Date(dataStr).toLocaleDateString('pt-BR');
-  };
-
+  // Filtros e Cálculos
+  const formatarData = (dataStr) => dataStr ? new Date(dataStr).toLocaleDateString('pt-BR') : '';
   const totalItens = itens.length;
   const itensEmprestados = itens.filter(item => item.emprestado_para !== null).length;
   const itensDisponiveis = totalItens - itensEmprestados;
@@ -289,140 +215,90 @@ function App() {
     return matchBusca && matchCategoria && matchStatus;
   });
 
- // ==========================================
-  // TELAS DE ENTRADA (Apresentação, Login e Pré-Cadastro)
-  // ==========================================
+  // Renderização: Telas de Acesso
   if (!usuarioLogado) {
-    
-    // 1. TELA DE PRÉ-CADASTRO
     if (mostrarPreCadastro) {
       return (
         <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#121212', padding: '20px' }}>
           <div style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '450px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
             <h2 style={{ color: '#00c853', margin: '0 0 10px 0', fontSize: '2rem' }}>Junte-se a nós!</h2>
-            <p style={{ color: '#aaa', marginBottom: '25px' }}>Deixe os seus dados e os seus interesses. A nossa diretoria entrará em contato para aprovar o seu acesso ao acervo.</p>
-            
+            <p style={{ color: '#aaa', marginBottom: '25px' }}>Deixe os seus dados e interesses. A nossa diretoria entrará em contato.</p>
             <form onSubmit={handlePreCadastroSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
               <div>
                 <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>Nome Completo</label>
                 <input type="text" value={preCadastroForm.nome} onChange={e => setPreCadastroForm({...preCadastroForm, nome: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
               </div>
-              
               <div>
                 <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>E-mail de Contato</label>
                 <input type="email" value={preCadastroForm.email} onChange={e => setPreCadastroForm({...preCadastroForm, email: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
               </div>
-
               <div>
-                <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>O que você mais curte? (Vinil, Jogos, Livros...)</label>
+                <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>O que você mais curte?</label>
                 <textarea value={preCadastroForm.mensagem} onChange={e => setPreCadastroForm({...preCadastroForm, mensagem: e.target.value})} rows="3" style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box', resize: 'vertical' }} required />
               </div>
-
-              <button type="submit" style={{ padding: '15px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,200,83,0.3)' }}>Enviar Pedido de Acesso</button>
+              <button type="submit" style={{ padding: '15px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', marginTop: '10px' }}>Enviar Pedido</button>
             </form>
-            
-            <button onClick={() => setMostrarPreCadastro(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>
-              ← Cancelar e voltar
-            </button>
+            <button onClick={() => setMostrarPreCadastro(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>← Voltar</button>
           </div>
           <ToastContainer theme="dark" position="bottom-right" />
         </div>
       );
     }
 
-    // 2. TELA DE LOGIN ORIGINAL
     if (mostrarLogin) {
       return (
         <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#121212', padding: '20px' }}>
           <div style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '350px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
             <h1 style={{ color: '#6200ea', margin: 0, fontSize: '2.5rem' }}>GeekTrack</h1>
-            <p style={{ color: '#aaa', marginBottom: '30px' }}>Acesso Restrito ao Acervo</p>
+            <p style={{ color: '#aaa', marginBottom: '30px' }}>Acesso Restrito</p>
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="email" placeholder="E-mail" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
               <input type="password" placeholder="Senha" value={loginForm.senha} onChange={e => setLoginForm({...loginForm, senha: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
-              <button type="submit" style={{ padding: '15px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(98,0,234,0.3)' }}>Entrar</button>
+              <button type="submit" style={{ padding: '15px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}>Entrar</button>
             </form>
-            <button onClick={() => setMostrarLogin(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>
-              ← Voltar à página inicial
-            </button>
+            <button onClick={() => setMostrarLogin(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>← Voltar à página inicial</button>
           </div>
           <ToastContainer theme="dark" position="bottom-right" />
         </div>
       );
     }
 
-    // 3. TELA DE APRESENTAÇÃO (Landing Page - Padrão)
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-        
         <h1 style={{ color: '#6200ea', fontSize: '4rem', margin: '0 0 10px 0', textShadow: '0 0 20px rgba(98, 0, 234, 0.5)' }}>GeekTrack</h1>
         <p style={{ fontSize: '1.3rem', color: '#ccc', maxWidth: '700px', marginBottom: '40px', lineHeight: '1.6' }}>
-          O catálogo digital da nossa Associação Cultural. Preservamos e compartilhamos de forma colaborativa o melhor da cultura pop: discos de vinil, jogos clássicos, quadrinhos e filmes.
+          Catálogo digital da nossa Associação Cultural. Preservamos e compartilhamos de forma colaborativa o melhor da cultura pop.
         </p>
-
         <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '15px', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', marginBottom: '50px', border: '2px solid #333' }}>
-          <img 
-            src="https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000&auto=format&fit=crop" 
-            alt="Acervo Geek" 
-            style={{ width: '100%', maxWidth: '800px', height: '400px', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease', cursor: 'pointer' }} 
-            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} 
-            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} 
-            title="Descubra o nosso acervo!"
-          />
-          <div style={{ position: 'absolute', bottom: '20px', right: '20px', backgroundColor: 'rgba(98,0,234,0.8)', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold' }}>
-            Mais de 70 itens no acervo!
-          </div>
+          <img src="https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000&auto=format&fit=crop" alt="Acervo Geek" style={{ width: '100%', maxWidth: '800px', height: '400px', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease', cursor: 'pointer' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} />
         </div>
-
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {/* BOTÃO ALTERADO PARA ABRIR O PRÉ-CADASTRO */}
-          <button 
-            onClick={() => setMostrarPreCadastro(true)} 
-            style={{ padding: '15px 30px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,200,83,0.3)', transition: 'background 0.3s' }}
-          >
-            🚀 Quero Participar!
-          </button>
-          
-          <button 
-            onClick={() => setMostrarLogin(true)} 
-            style={{ padding: '15px 30px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(98,0,234,0.3)' }}
-          >
-            🔐 Já sou membro (Entrar)
-          </button>
+          <button onClick={() => setMostrarPreCadastro(true)} style={{ padding: '15px 30px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}>🚀 Quero Participar!</button>
+          <button onClick={() => setMostrarLogin(true)} style={{ padding: '15px 30px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer' }}>🔐 Já sou membro (Entrar)</button>
         </div>
         <ToastContainer theme="dark" position="bottom-right" />
       </div>
     );
   }
-  // ==========================================
-  // RENDERIZAÇÃO DA APLICAÇÃO PRINCIPAL
-  // ==========================================
+
+  // Renderização: Sistema Principal
   return (
     <div className="app-container">
       <header className="app-header">
         <h1>GeekTrack</h1>
         <p>Bem-vindo(a), <strong>{usuarioLogado.nome}</strong> | Perfil: {usuarioLogado.perfil.toUpperCase()}</p>
-        
         <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
           <button onClick={() => setTelaAtual('acervo')} className={`nav-btn ${telaAtual === 'acervo' ? 'active' : ''}`}>📚 Acervo</button>
-          
           {isAdmin && (
             <>
               <button onClick={() => setTelaAtual('membros')} className={`nav-btn ${telaAtual === 'membros' ? 'active' : ''}`}>👥 Membros</button>
               <button onClick={() => setTelaAtual('dashboard')} className={`nav-btn ${telaAtual === 'dashboard' ? 'active' : ''}`}>📊 Relatórios</button>
             </>
           )}
-
-          <button onClick={() => {
-            setUsuarioLogado(null);
-            localStorage.removeItem('@geektrack:user');
-          }} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
+          <button onClick={() => { setUsuarioLogado(null); localStorage.removeItem('@geektrack:user'); }} style={{ padding: '12px 24px', backgroundColor: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Sair</button>
         </div>
       </header>
 
-      {/* ======================================= */}
-      {/* TELA 1: ACERVO (Visível para todos)     */}
-      {/* ======================================= */}
       {telaAtual === 'acervo' && (
         <>
           {isAdmin && (
@@ -432,7 +308,6 @@ function App() {
                 <div className="dash-card green"><h3>Disponíveis</h3><p>{itensDisponiveis}</p></div>
                 <div className="dash-card orange"><h3>Emprestados</h3><p>{itensEmprestados}</p></div>
               </div>
-
               <div className="form-container">
                 <h2>{editandoId ? '✏️ Editando Item...' : 'Cadastrar Novo Item'}</h2>
                 <form onSubmit={handleItemSubmit} className="geek-form">
@@ -447,21 +322,14 @@ function App() {
                   </div>
                   <div className="form-row">
                     <div className="file-input-wrapper">
-                      <input type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} />
-                      {editandoId && <small style={{display: 'block', marginTop: '5px', color: '#aaa'}}>Deixe em branco para manter a foto atual.</small>}
+                      <input type="file" accept="image/*" onChange={e => setFoto(e.target.files[0])} ref={fileInputRef} />
+                      {editandoId && <small style={{display: 'block', color: '#aaa'}}>Deixe em branco para manter a foto atual.</small>}
                     </div>
                     <label className="checkbox-label"><input type="checkbox" name="consumido" checked={novoItem.consumido} onChange={handleItemInputChange} />Já consumi</label>
                   </div>
-                  
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button type="submit" className="btn-salvar" style={{ flex: 2 }}>
-                      {editandoId ? 'Guardar Alterações' : 'Adicionar ao Acervo'}
-                    </button>
-                    {editandoId && (
-                      <button type="button" onClick={cancelarEdicao} className="btn-outline" style={{ flex: 1, padding: '15px', borderRadius: '6px' }}>
-                        Cancelar
-                      </button>
-                    )}
+                    <button type="submit" className="btn-salvar" style={{ flex: 2 }}>{editandoId ? 'Guardar Alterações' : 'Adicionar ao Acervo'}</button>
+                    {editandoId && <button type="button" onClick={cancelarEdicao} className="btn-outline" style={{ flex: 1, padding: '15px', borderRadius: '6px' }}>Cancelar</button>}
                   </div>
                 </form>
               </div>
@@ -470,18 +338,17 @@ function App() {
 
           <div className="acervo-section">
             <h2>Catálogo Disponível</h2>
-            
             <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', flexWrap: 'wrap' }}>
-              <input type="text" placeholder="🔍 Buscar por título..." value={termoBusca} onChange={(e) => setTermoBusca(e.target.value)} style={{ flex: 2, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', minWidth: '200px' }} />
-              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', minWidth: '150px' }}>
+              <input type="text" placeholder="🔍 Buscar por título..." value={termoBusca} onChange={(e) => setTermoBusca(e.target.value)} style={{ flex: 2, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }} />
+              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }}>
                 <option value="">📂 Todas as Categorias</option>{categorias.map(cat => <option key={cat.id} value={cat.id}>{cat.nome}</option>)}
               </select>
-              <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', minWidth: '150px' }}>
+              <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }}>
                 <option value="">⚡ Todos os Status</option><option value="disponivel">✅ Disponíveis</option><option value="emprestado">⚠️ Emprestados</option>
               </select>
             </div>
 
-            {itensFiltrados.length === 0 && <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#1e1e1e', borderRadius: '8px', color: '#888' }}><h3>Nenhum item encontrado. 😢</h3></div>}
+            {itensFiltrados.length === 0 && <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#1e1e1e', borderRadius: '8px', color: '#888' }}><h3>Nenhum item encontrado.</h3></div>}
 
             <div className="itens-grid">
               {itensFiltrados.map((item) => {
@@ -517,7 +384,7 @@ function App() {
                           <>
                             {isAdmin ? (
                               <div className="emprestar-actions">
-                                <select onChange={(e) => handleSelectUsuario(item.id, e.target.value)} value={usuarioSelecionado[item.id] || ""}><option value="">Emprestar para...</option>{usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}</select>
+                                <select onChange={(e) => setUsuarioSelecionado({ ...usuarioSelecionado, [item.id]: e.target.value })} value={usuarioSelecionado[item.id] || ""}><option value="">Emprestar para...</option>{usuarios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}</select>
                                 <button onClick={() => registrarEmprestimo(item.id)} className="btn-emprestar">OK</button>
                               </div>
                             ) : (
@@ -535,18 +402,13 @@ function App() {
                             <button onClick={() => toggleHistorico(item.id)} className="btn-outline">📝 Histórico</button>
                             <button onClick={() => deletarItem(item.id)} className="btn-danger">🗑️ Excluir</button>
                           </div>
-                          
                           {historicos[item.id] && Array.isArray(historicos[item.id]) && (
                             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#111', borderRadius: '6px', fontSize: '0.85rem' }}>
                               <strong style={{ display: 'block', marginBottom: '5px' }}>Histórico:</strong>
-                              {historicos[item.id].length === 0 ? (
-                                <p style={{ margin: 0, color: '#888' }}>Nenhum empréstimo registado.</p>
-                              ) : (
+                              {historicos[item.id].length === 0 ? <p style={{ margin: 0, color: '#888' }}>Nenhum registro.</p> : (
                                 <ul style={{ paddingLeft: '15px', margin: 0, color: '#aaa' }}>
                                   {historicos[item.id].map((h, i) => (
-                                    <li key={i}>
-                                      <strong>{h.usuario_nome}</strong> ({formatarData(h.data_emprestimo)} a {h.data_devolucao ? formatarData(h.data_devolucao) : 'Atual'})
-                                    </li>
+                                    <li key={i}><strong>{h.usuario_nome}</strong> ({formatarData(h.data_emprestimo)} a {h.data_devolucao ? formatarData(h.data_devolucao) : 'Atual'})</li>
                                   ))}
                                 </ul>
                               )}
@@ -563,37 +425,32 @@ function App() {
         </>
       )}
 
-      {/* ======================================= */}
-      {/* TELA 2: MEMBROS (Apenas Admin)          */}
-      {/* ======================================= */}
       {telaAtual === 'membros' && isAdmin && (
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           <div className="form-container">
             <h2>Cadastrar Novo Membro</h2>
             <form onSubmit={handleUsuarioSubmit} className="geek-form">
-              <input type="text" name="nome" value={novoUsuario.nome} onChange={handleUsuarioInputChange} placeholder="Nome completo" required />
-              <input type="email" name="email" value={novoUsuario.email} onChange={handleUsuarioInputChange} placeholder="E-mail de contacto" required />
+              <input type="text" name="nome" value={novoUsuario.nome} onChange={e => setNovoUsuario({...novoUsuario, nome: e.target.value})} placeholder="Nome completo" required />
+              <input type="email" name="email" value={novoUsuario.email} onChange={e => setNovoUsuario({...novoUsuario, email: e.target.value})} placeholder="E-mail" required />
               <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="text" name="senha" value={novoUsuario.senha} onChange={handleUsuarioInputChange} placeholder="Senha (vazio = 123456)" style={{ flex: 1 }} />
-                <select name="perfil" value={novoUsuario.perfil} onChange={handleUsuarioInputChange} style={{ flex: 1 }}>
-                  <option value="membro">Membro Comum</option>
-                  <option value="admin">Administrador</option>
+                <input type="text" name="senha" value={novoUsuario.senha} onChange={e => setNovoUsuario({...novoUsuario, senha: e.target.value})} placeholder="Senha (vazio = 123456)" style={{ flex: 1 }} />
+                <select name="perfil" value={novoUsuario.perfil} onChange={e => setNovoUsuario({...novoUsuario, perfil: e.target.value})} style={{ flex: 1 }}>
+                  <option value="membro">Membro</option><option value="admin">Administrador</option>
                 </select>
               </div>
               <button type="submit" className="btn-salvar">Adicionar Membro</button>
             </form>
           </div>
-
           <div className="acervo-section" style={{ backgroundColor: '#1e1e1e', padding: '20px', borderRadius: '12px' }}>
-            <h2>Membros Registados ({usuarios.length})</h2>
+            <h2>Membros Registados</h2>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {usuarios.map(user => (
                 <li key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid #333' }}>
                   <div>
-                    <strong style={{ fontSize: '1.2rem' }}>{user.nome}</strong> <span style={{ fontSize: '0.8rem', backgroundColor: user.perfil === 'admin' ? '#6200ea' : '#555', padding: '2px 6px', borderRadius: '4px', marginLeft: '5px' }}>{user.perfil}</span><br/>
+                    <strong style={{ fontSize: '1.2rem' }}>{user.nome}</strong> <span style={{ fontSize: '0.8rem', backgroundColor: user.perfil === 'admin' ? '#6200ea' : '#555', padding: '2px 6px', borderRadius: '4px' }}>{user.perfil}</span><br/>
                     <span style={{ color: '#aaa' }}>{user.email}</span>
                   </div>
-                  <button onClick={() => deletarUsuario(user.id)} className="btn-danger" style={{ padding: '8px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Remover</button>
+                  <button onClick={() => deletarUsuario(user.id)} className="btn-danger" style={{ padding: '8px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>Remover</button>
                 </li>
               ))}
             </ul>
@@ -601,12 +458,8 @@ function App() {
         </div>
       )}
 
-      {/* ======================================= */}
-      {/* TELA 3: DASHBOARD (Apenas Admin)        */}
-      {/* ======================================= */}
       {telaAtual === 'dashboard' && isAdmin && estatisticas && (
         <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
-          
           <div style={{ backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
              <h2 style={{ marginTop: 0, marginBottom: '10px' }}>📈 Saúde do Acervo</h2>
              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#aaa' }}>
@@ -616,21 +469,18 @@ function App() {
              <div style={{ height: '24px', backgroundColor: '#ffab00', borderRadius: '12px', overflow: 'hidden', display: 'flex' }}>
                 <div style={{ width: `${(itensDisponiveis / totalItens) * 100}%`, backgroundColor: '#00c853', transition: 'width 1s ease-in-out' }}></div>
              </div>
-             <p style={{ fontSize: '0.85rem', color: '#888', marginTop: '10px', textAlign: 'center' }}>
-                A barra verde representa os itens que estão fisicamente na Associação neste momento.
-             </p>
           </div>
 
           <div style={{ backgroundColor: '#ff1744', padding: '20px', borderRadius: '12px', marginBottom: '30px', color: 'white' }}>
             <h2 style={{ marginTop: 0 }}>⚠️ Alertas de Inadimplência</h2>
             {estatisticas.atrasados.length === 0 ? (
-              <p style={{ margin: 0, fontSize: '1.1rem' }}>✅ Fantástico! Todos os itens estão dentro do prazo de 14 dias.</p>
+              <p style={{ margin: 0, fontSize: '1.1rem' }}>Todos os itens estão dentro do prazo.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {estatisticas.atrasados.map((item, i) => (
                   <li key={i} style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.3)', marginBottom: '10px', borderRadius: '6px' }}>
                     <strong style={{ fontSize: '1.2rem' }}>{item.titulo}</strong> — Com: {item.usuario} <br/>
-                    <em style={{ color: '#ffcdd2' }}>Atrasado há {item.dias_atraso - 14} dias (Desde: {formatarData(item.data_emprestimo)})</em>
+                    <em style={{ color: '#ffcdd2' }}>Atrasado há {item.dias_atraso - 14} dias</em>
                   </li>
                 ))}
               </ul>
@@ -639,34 +489,24 @@ function App() {
 
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
-              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🏆 Top 5: Itens Mais Cobiçados</h2>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🏆 Mais Cobiçados</h2>
               <ol style={{ paddingLeft: '20px', color: '#aaa', margin: 0 }}>
                 {estatisticas.topItens.map((item, i) => (
-                  <li key={i} style={{ marginBottom: '15px' }}>
-                    <strong style={{ color: 'white', fontSize: '1.1rem' }}>{item.titulo}</strong> <br/>
-                    Emprestado {item.total_vezes} vezes
-                  </li>
+                  <li key={i} style={{ marginBottom: '15px' }}><strong style={{ color: 'white' }}>{item.titulo}</strong> <br/>Emprestado {item.total_vezes} vezes</li>
                 ))}
-                {estatisticas.topItens.length === 0 && <p>Nenhum empréstimo registado ainda.</p>}
               </ol>
             </div>
-
             <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
-              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🌟 Top 5: Membros Mais Ativos</h2>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🌟 Membros Mais Ativos</h2>
               <ol style={{ paddingLeft: '20px', color: '#aaa', margin: 0 }}>
                 {estatisticas.topUsuarios.map((user, i) => (
-                  <li key={i} style={{ marginBottom: '15px' }}>
-                    <strong style={{ color: 'white', fontSize: '1.1rem' }}>{user.nome}</strong> <br/>
-                    Pegou {user.total_pegos} itens
-                  </li>
+                  <li key={i} style={{ marginBottom: '15px' }}><strong style={{ color: 'white' }}>{user.nome}</strong> <br/>Pegou {user.total_pegos} itens</li>
                 ))}
-                {estatisticas.topUsuarios.length === 0 && <p>Nenhum membro ativo ainda.</p>}
               </ol>
             </div>
           </div>
         </div>
       )}
-
       <ToastContainer theme="dark" position="bottom-right" />
     </div>
   );
