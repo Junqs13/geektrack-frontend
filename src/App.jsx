@@ -15,7 +15,9 @@ function App() {
   });
   const [loginForm, setLoginForm] = useState({ email: '', senha: '' });
 
-  const [mostrarLogin, setMostrarLogin] = useState(false); // <--- ADICIONE ESTA LINHA AQUI
+  const [mostrarLogin, setMostrarLogin] = useState(false);
+  const [mostrarPreCadastro, setMostrarPreCadastro] = useState(false);
+  const [preCadastroForm, setPreCadastroForm] = useState({ nome: '', email: '', mensagem: '' }); 
   // ==========================================
   // ESTADOS DA APLICAÇÃO
   // ==========================================
@@ -67,7 +69,19 @@ function App() {
   useEffect(() => { 
     carregarDados(); 
   }, [usuarioLogado]);
-
+  
+// ==========================================
+  // FUNÇÃO DE PRÉ-CADASTRO (Contato)
+  // ==========================================
+  const handlePreCadastroSubmit = (e) => {
+    e.preventDefault();
+    // Simula o envio do e-mail/pedido com uma notificação de sucesso
+    toast.success(`Excelente, ${preCadastroForm.nome}! O seu pedido foi enviado para a diretoria da Associação. Entraremos em contato em breve!`, { autoClose: 6000 });
+    
+    // Limpa o formulário e volta para a tela inicial
+    setPreCadastroForm({ nome: '', email: '', mensagem: '' });
+    setMostrarPreCadastro(false);
+  };
   // ==========================================
   // FUNÇÃO DE LOGIN
   // ==========================================
@@ -275,49 +289,40 @@ function App() {
     return matchBusca && matchCategoria && matchStatus;
   });
 
-  // ==========================================
-  // TELAS DE ENTRADA (Apresentação e Login)
+ // ==========================================
+  // TELAS DE ENTRADA (Apresentação, Login e Pré-Cadastro)
   // ==========================================
   if (!usuarioLogado) {
     
-    // 1. TELA DE APRESENTAÇÃO (Landing Page)
-    if (!mostrarLogin) {
+    // 1. TELA DE PRÉ-CADASTRO
+    if (mostrarPreCadastro) {
       return (
-        <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
-          
-          <h1 style={{ color: '#6200ea', fontSize: '4rem', margin: '0 0 10px 0', textShadow: '0 0 20px rgba(98, 0, 234, 0.5)' }}>GeekTrack</h1>
-          <p style={{ fontSize: '1.3rem', color: '#ccc', maxWidth: '700px', marginBottom: '40px', lineHeight: '1.6' }}>
-            O catálogo digital da nossa Associação Cultural. Preservamos e compartilhamos de forma colaborativa o melhor da cultura pop: discos de vinil, jogos clássicos, quadrinhos e filmes.
-          </p>
+        <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#121212', padding: '20px' }}>
+          <div style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '450px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+            <h2 style={{ color: '#00c853', margin: '0 0 10px 0', fontSize: '2rem' }}>Junte-se a nós!</h2>
+            <p style={{ color: '#aaa', marginBottom: '25px' }}>Deixe os seus dados e os seus interesses. A nossa diretoria entrará em contato para aprovar o seu acesso ao acervo.</p>
+            
+            <form onSubmit={handlePreCadastroSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', textAlign: 'left' }}>
+              <div>
+                <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>Nome Completo</label>
+                <input type="text" value={preCadastroForm.nome} onChange={e => setPreCadastroForm({...preCadastroForm, nome: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
+              </div>
+              
+              <div>
+                <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>E-mail de Contato</label>
+                <input type="email" value={preCadastroForm.email} onChange={e => setPreCadastroForm({...preCadastroForm, email: e.target.value})} style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
+              </div>
 
-          {/* Imagem Instigante com Efeito Interativo (Hover) */}
-          <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '15px', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', marginBottom: '50px', border: '2px solid #333' }}>
-            <img 
-              src="https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000&auto=format&fit=crop" 
-              alt="Acervo Geek" 
-              style={{ width: '100%', maxWidth: '800px', height: '400px', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease', cursor: 'pointer' }} 
-              onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} 
-              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} 
-              title="Descubra o nosso acervo!"
-            />
-            <div style={{ position: 'absolute', bottom: '20px', right: '20px', backgroundColor: 'rgba(98,0,234,0.8)', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold' }}>
-              Mais de 70 itens no acervo!
-            </div>
-          </div>
+              <div>
+                <label style={{ color: '#ccc', fontSize: '0.9rem', marginBottom: '5px', display: 'block' }}>O que você mais curte? (Vinil, Jogos, Livros...)</label>
+                <textarea value={preCadastroForm.mensagem} onChange={e => setPreCadastroForm({...preCadastroForm, mensagem: e.target.value})} rows="3" style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box', resize: 'vertical' }} required />
+              </div>
 
-          {/* Botões de Ação */}
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button 
-              onClick={() => toast.info('Para participar, visite o nosso espaço físico em Sorocaba ou envie um e-mail para a diretoria!', { autoClose: 5000 })} 
-              style={{ padding: '15px 30px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,200,83,0.3)', transition: 'background 0.3s' }}
-            >
-              🚀 Quero Participar!
-            </button>
-            <button 
-              onClick={() => setMostrarLogin(true)} 
-              style={{ padding: '15px 30px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(98,0,234,0.3)' }}
-            >
-              🔐 Já sou membro (Entrar)
+              <button type="submit" style={{ padding: '15px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', marginTop: '10px', boxShadow: '0 4px 15px rgba(0,200,83,0.3)' }}>Enviar Pedido de Acesso</button>
+            </form>
+            
+            <button onClick={() => setMostrarPreCadastro(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>
+              ← Cancelar e voltar
             </button>
           </div>
           <ToastContainer theme="dark" position="bottom-right" />
@@ -325,29 +330,70 @@ function App() {
       );
     }
 
-    // 2. TELA DE LOGIN ORIGINAL (Se o usuário clicar em "Já sou membro")
+    // 2. TELA DE LOGIN ORIGINAL
+    if (mostrarLogin) {
+      return (
+        <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#121212', padding: '20px' }}>
+          <div style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '350px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
+            <h1 style={{ color: '#6200ea', margin: 0, fontSize: '2.5rem' }}>GeekTrack</h1>
+            <p style={{ color: '#aaa', marginBottom: '30px' }}>Acesso Restrito ao Acervo</p>
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <input type="email" placeholder="E-mail" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
+              <input type="password" placeholder="Senha" value={loginForm.senha} onChange={e => setLoginForm({...loginForm, senha: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box' }} required />
+              <button type="submit" style={{ padding: '15px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem', boxShadow: '0 4px 15px rgba(98,0,234,0.3)' }}>Entrar</button>
+            </form>
+            <button onClick={() => setMostrarLogin(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>
+              ← Voltar à página inicial
+            </button>
+          </div>
+          <ToastContainer theme="dark" position="bottom-right" />
+        </div>
+      );
+    }
+
+    // 3. TELA DE APRESENTAÇÃO (Landing Page - Padrão)
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', backgroundColor: '#121212' }}>
-        <div style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '12px', textAlign: 'center', width: '350px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}>
-          <h1 style={{ color: '#6200ea', margin: 0, fontSize: '2.5rem' }}>GeekTrack</h1>
-          <p style={{ color: '#aaa', marginBottom: '30px' }}>Acesso Restrito ao Acervo</p>
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <input type="email" placeholder="E-mail" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }} required />
-            <input type="password" placeholder="Senha" value={loginForm.senha} onChange={e => setLoginForm({...loginForm, senha: e.target.value})} style={{ padding: '12px', borderRadius: '6px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white' }} required />
-            <button type="submit" style={{ padding: '15px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}>Entrar</button>
-          </form>
-          {/* Botão de voltar para a tela inicial */}
-          <button onClick={() => setMostrarLogin(false)} style={{ marginTop: '20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', textDecoration: 'underline' }}>
-            ← Voltar à página inicial
+      <div style={{ minHeight: '100vh', backgroundColor: '#121212', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+        
+        <h1 style={{ color: '#6200ea', fontSize: '4rem', margin: '0 0 10px 0', textShadow: '0 0 20px rgba(98, 0, 234, 0.5)' }}>GeekTrack</h1>
+        <p style={{ fontSize: '1.3rem', color: '#ccc', maxWidth: '700px', marginBottom: '40px', lineHeight: '1.6' }}>
+          O catálogo digital da nossa Associação Cultural. Preservamos e compartilhamos de forma colaborativa o melhor da cultura pop: discos de vinil, jogos clássicos, quadrinhos e filmes.
+        </p>
+
+        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '15px', boxShadow: '0 10px 40px rgba(0,0,0,0.8)', marginBottom: '50px', border: '2px solid #333' }}>
+          <img 
+            src="https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?q=80&w=1000&auto=format&fit=crop" 
+            alt="Acervo Geek" 
+            style={{ width: '100%', maxWidth: '800px', height: '400px', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease', cursor: 'pointer' }} 
+            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'} 
+            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'} 
+            title="Descubra o nosso acervo!"
+          />
+          <div style={{ position: 'absolute', bottom: '20px', right: '20px', backgroundColor: 'rgba(98,0,234,0.8)', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold' }}>
+            Mais de 70 itens no acervo!
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {/* BOTÃO ALTERADO PARA ABRIR O PRÉ-CADASTRO */}
+          <button 
+            onClick={() => setMostrarPreCadastro(true)} 
+            style={{ padding: '15px 30px', backgroundColor: '#00c853', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,200,83,0.3)', transition: 'background 0.3s' }}
+          >
+            🚀 Quero Participar!
+          </button>
+          
+          <button 
+            onClick={() => setMostrarLogin(true)} 
+            style={{ padding: '15px 30px', backgroundColor: '#6200ea', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(98,0,234,0.3)' }}
+          >
+            🔐 Já sou membro (Entrar)
           </button>
         </div>
         <ToastContainer theme="dark" position="bottom-right" />
       </div>
     );
   }
-
-  const isAdmin = usuarioLogado.perfil === 'admin';
-
   // ==========================================
   // RENDERIZAÇÃO DA APLICAÇÃO PRINCIPAL
   // ==========================================
