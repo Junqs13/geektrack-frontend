@@ -48,7 +48,11 @@ function App() {
   const [termoBusca, setTermoBusca] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('');
-
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const itensPorPagina = 10;
+    useEffect(() => {
+    setPaginaAtual(1);
+    }, [termoBusca, filtroCategoria, filtroStatus]);
   const carregarDados = async () => {
     if (!usuarioLogado) return;
     try {
@@ -225,7 +229,15 @@ function App() {
     if (filtroStatus === 'disponivel') matchStatus = item.emprestado_para === null;
     if (filtroStatus === 'emprestado') matchStatus = item.emprestado_para !== null;
     return matchBusca && matchCategoria && matchStatus;
-  }).sort((a, b) => a.titulo.localeCompare(b.titulo)); 
+  }).sort((a, b) => a.titulo.localeCompare(b.titulo));
+
+  // ==========================================
+  // MATEMÁTICA DA PAGINAÇÃO
+  // ==========================================
+  const totalPaginas = Math.ceil(itensFiltrados.length / itensPorPagina);
+  const indexInicio = (paginaAtual - 1) * itensPorPagina;
+  const indexFim = indexInicio + itensPorPagina;
+  const itensPaginados = itensFiltrados.slice(indexInicio, indexFim);
 
   // Renderização: Telas de Acesso
   if (!usuarioLogado) {
@@ -362,8 +374,8 @@ function App() {
 
             {itensFiltrados.length === 0 && <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#1e1e1e', borderRadius: '8px', color: '#888' }}><h3>Nenhum item encontrado.</h3></div>}
 
-            <div className="itens-grid">
-              {itensFiltrados.map((item) => {
+           <div className="itens-grid">
+              {itensPaginados.map((item) => {
                 let estaAtrasado = false;
                 let diasEmprestado = 0;
                 if (item.emprestado_para && item.data_emprestimo) {
