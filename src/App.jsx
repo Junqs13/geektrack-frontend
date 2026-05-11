@@ -452,10 +452,44 @@ function App() {
                       )}
                     </div>
                   </div>
-                );
+               );
               })}
-            </div>
-          </div>
+            </div> {/* <-- Aqui fecha a div "itens-grid" */}
+
+            {/* ========================================== */}
+            {/* CONTROLES DE PAGINAÇÃO */}
+            {/* ========================================== */}
+            {totalPaginas > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '40px', paddingBottom: '20px' }}>
+                <button 
+                  onClick={() => {
+                    setPaginaAtual(prev => Math.max(prev - 1, 1));
+                    window.scrollTo({ top: 400, behavior: 'smooth' }); 
+                  }} 
+                  disabled={paginaAtual === 1}
+                  style={{ padding: '10px 20px', backgroundColor: paginaAtual === 1 ? '#333' : '#6200ea', color: paginaAtual === 1 ? '#666' : 'white', border: 'none', borderRadius: '8px', cursor: paginaAtual === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
+                >
+                  ← Anterior
+                </button>
+                
+                <span style={{ color: '#ccc', fontWeight: 'bold' }}>
+                  Página {paginaAtual} de {totalPaginas}
+                </span>
+
+                <button 
+                  onClick={() => {
+                    setPaginaAtual(prev => Math.min(prev + 1, totalPaginas));
+                    window.scrollTo({ top: 400, behavior: 'smooth' }); 
+                  }} 
+                  disabled={paginaAtual === totalPaginas}
+                  style={{ padding: '10px 20px', backgroundColor: paginaAtual === totalPaginas ? '#333' : '#6200ea', color: paginaAtual === totalPaginas ? '#666' : 'white', border: 'none', borderRadius: '8px', cursor: paginaAtual === totalPaginas ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}
+                >
+                  Próxima →
+                </button>
+              </div>
+            )}
+
+          </div> {/* <-- Aqui fecha a div "acervo-section" */}
         </>
       )}
 
