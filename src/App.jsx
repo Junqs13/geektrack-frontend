@@ -52,7 +52,7 @@ function App() {
   const itensPorPagina = 10;
     useEffect(() => {
     setPaginaAtual(1);
-    }, [termoBusca, filtroCategoria, filtroStatus]);
+    }, [termoBusca, filtroCategoria, filtroStatus, telaAtual]);
   const carregarDados = async () => {
     if (!usuarioLogado) return;
     try {
