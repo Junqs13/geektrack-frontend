@@ -7,15 +7,15 @@ import './App.css';
 const API_URL = import.meta.env.VITE_API_URL;
 
 const imagensPadrao = {
-  1: 'https://images.unsplash.com/photo-1535551951406-a19828b0a76b?w=500&q=80', // Discos de Rock
-  2: 'https://images.unsplash.com/photo-1531590878845-12627191e687?w=500&q=80', // Jogos da Nintendo
-  3: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=500&q=80', // Quadrinhos
-  4: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80', // Filmes do Tarantino
-  5: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80', // Outros Musicais
-  6: 'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=500&q=80', // PS e Xbox
-  7: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=500&q=80', // Filmes Clássicos
-  8: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&q=80', // Livros
-  default: 'https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=500&q=80' // Imagem Geek Genérica
+  1: 'https://images.unsplash.com/photo-1514649923863-ceaf75b770ab?w=500&q=80', // Discos de Rock: Agulha no vinil
+  2: 'https://images.unsplash.com/photo-1531525645387-7f14be1bfc3d?w=500&q=80', // Jogos da Nintendo: Gameboy clássico
+  3: 'https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=500&q=80', // Quadrinhos: HQs físicas empilhadas
+  4: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80', // Filmes do Tarantino: Claquete e rolos de filme
+  5: 'https://images.unsplash.com/photo-1458560871784-56d23406c091?w=500&q=80', // Outros Musicais: Fitas Cassete retrô
+  6: 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?w=500&q=80', // PS e Xbox: Controle gamer iluminado
+  7: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&q=80', // Filmes Clássicos: Sala de cinema
+  8: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500&q=80', // Livros: Livros de capa dura clássicos
+  default: 'https://images.unsplash.com/photo-1614050121175-19e078912959?w=500&q=80' // Imagem Geek Genérica: Setup com neon
 };
 
 function App() {
