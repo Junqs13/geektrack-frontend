@@ -6,6 +6,18 @@ import './App.css';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const imagensPadrao = {
+  1: 'https://images.unsplash.com/photo-1535551951406-a19828b0a76b?w=500&q=80', // Discos de Rock
+  2: 'https://images.unsplash.com/photo-1531590878845-12627191e687?w=500&q=80', // Jogos da Nintendo
+  3: 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?w=500&q=80', // Quadrinhos
+  4: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80', // Filmes do Tarantino
+  5: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80', // Outros Musicais
+  6: 'https://images.unsplash.com/photo-1606144042614-b2417e99c4e3?w=500&q=80', // PS e Xbox
+  7: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=500&q=80', // Filmes Clássicos
+  8: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=500&q=80', // Livros
+  default: 'https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=500&q=80' // Imagem Geek Genérica
+};
+
 function App() {
   // Estados de Autenticação e Navegação
   const [usuarioLogado, setUsuarioLogado] = useState(() => {
@@ -362,8 +374,15 @@ function App() {
                 return (
                   <div className={`item-card ${estaAtrasado ? 'atrasado' : ''}`} key={item.id}>
                     <div className="card-image">
-                      {item.foto_url ? <img src={item.foto_url} alt="Capa" /> : <div className="no-image">Sem Capa</div>}
-                      <div className={`status-badge ${item.consumido ? 'badge-green' : 'badge-orange'}`}>{item.consumido ? '✓ Consumido' : '⏳ Na fila'}</div>
+                      <img 
+                        src={item.foto_url || imagensPadrao[item.categoria_id] || imagensPadrao.default} 
+                         alt={item.titulo}
+                          onError={(e) => {
+                          e.target.onerror = null; // Evita loop infinito se a imagem padrão também falhar
+                           e.target.src = imagensPadrao[item.categoria_id] || imagensPadrao.default;
+                            }}
+                           />
+                    <div className={`status-badge ${item.consumido ? 'badge-green' : 'badge-orange'}`}>{item.consumido ? '✓ Consumido' : '⏳ Na fila'}</div>
                     </div>
                     <div className="card-content">
                       <h3 className="item-title">{item.titulo}</h3>
