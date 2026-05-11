@@ -225,7 +225,7 @@ function App() {
     if (filtroStatus === 'disponivel') matchStatus = item.emprestado_para === null;
     if (filtroStatus === 'emprestado') matchStatus = item.emprestado_para !== null;
     return matchBusca && matchCategoria && matchStatus;
-  });
+  }).sort((a, b) => a.titulo.localeCompare(b.titulo)); 
 
   // Renderização: Telas de Acesso
   if (!usuarioLogado) {
@@ -376,13 +376,16 @@ function App() {
                     <div className="card-image">
                       <img 
                         src={item.foto_url || imagensPadrao[item.categoria_id] || imagensPadrao.default} 
-                         alt={item.titulo}
-                          onError={(e) => {
-                          e.target.onerror = null; // Evita loop infinito se a imagem padrão também falhar
-                           e.target.src = imagensPadrao[item.categoria_id] || imagensPadrao.default;
-                            }}
-                           />
-                    <div className={`status-badge ${item.consumido ? 'badge-green' : 'badge-orange'}`}>{item.consumido ? '✓ Consumido' : '⏳ Na fila'}</div>
+                        alt={item.titulo}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.src = imagensPadrao[item.categoria_id] || imagensPadrao.default;
+                        }}
+                      />
+                      <div className={`status-badge ${item.consumido ? 'badge-green' : 'badge-orange'}`}>
+                        {item.consumido ? '✓ Consumido' : '⏳ Na fila'}
+                      </div>
                     </div>
                     <div className="card-content">
                       <h3 className="item-title">{item.titulo}</h3>
