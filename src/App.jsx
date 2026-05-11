@@ -481,52 +481,102 @@ function App() {
       )}
 
       {telaAtual === 'dashboard' && isAdmin && estatisticas && (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
-          <div style={{ backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
-             <h2 style={{ marginTop: 0, marginBottom: '10px' }}>📈 Saúde do Acervo</h2>
-             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#aaa' }}>
-                <span>Disponível: {((itensDisponiveis / totalItens) * 100 || 0).toFixed(1)}%</span>
-                <span>Emprestado: {((itensEmprestados / totalItens) * 100 || 0).toFixed(1)}%</span>
-             </div>
-             <div style={{ height: '24px', backgroundColor: '#ffab00', borderRadius: '12px', overflow: 'hidden', display: 'flex' }}>
-                <div style={{ width: `${(itensDisponiveis / totalItens) * 100}%`, backgroundColor: '#00c853', transition: 'width 1s ease-in-out' }}></div>
-             </div>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '40px' }}>
+          
+          {/* LINHA 1: Saúde e Alertas */}
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+               <h2 style={{ marginTop: 0, marginBottom: '10px' }}>📈 Saúde do Acervo</h2>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', color: '#aaa' }}>
+                  <span>Disponível: {((itensDisponiveis / totalItens) * 100 || 0).toFixed(1)}%</span>
+                  <span>Emprestado: {((itensEmprestados / totalItens) * 100 || 0).toFixed(1)}%</span>
+               </div>
+               <div style={{ height: '24px', backgroundColor: '#ffab00', borderRadius: '12px', overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ width: `${(itensDisponiveis / totalItens) * 100}%`, backgroundColor: '#00c853', transition: 'width 1s ease-in-out' }}></div>
+               </div>
+            </div>
+
+            <div style={{ flex: 1, minWidth: '300px', backgroundColor: estatisticas.atrasados?.length > 0 ? '#ff1744' : '#1e1e1e', padding: '20px', borderRadius: '12px', color: 'white' }}>
+              <h2 style={{ marginTop: 0 }}>⚠️ Alertas de Atraso</h2>
+              {!estatisticas.atrasados || estatisticas.atrasados.length === 0 ? (
+                <p style={{ margin: 0, fontSize: '1.1rem', color: '#00c853' }}>✅ Fantástico! Todos os empréstimos estão dentro do prazo.</p>
+              ) : (
+                <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {estatisticas.atrasados.map((item, i) => (
+                      <li key={i} style={{ padding: '10px', backgroundColor: 'rgba(0,0,0,0.3)', marginBottom: '5px', borderRadius: '6px', fontSize: '0.9rem' }}>
+                        <strong>{item.titulo}</strong> com {item.usuario} <br/>
+                        <em style={{ color: '#ffcdd2' }}>{item.dias_atraso - 14} dias de atraso</em>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={{ backgroundColor: '#ff1744', padding: '20px', borderRadius: '12px', marginBottom: '30px', color: 'white' }}>
-            <h2 style={{ marginTop: 0 }}>⚠️ Alertas de Inadimplência</h2>
-            {estatisticas.atrasados.length === 0 ? (
-              <p style={{ margin: 0, fontSize: '1.1rem' }}>Todos os itens estão dentro do prazo.</p>
-            ) : (
+          {/* LINHA 2: Distribuição do Acervo */}
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div style={{ flex: 2, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>📂 Acervo por Categoria</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
+                {estatisticas.porCategoria?.map((cat, i) => (
+                  <div key={i} style={{ backgroundColor: '#2a2a2a', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6200ea' }}>
+                    <span style={{ display: 'block', fontSize: '0.85rem', color: '#aaa', marginBottom: '5px' }}>{cat.nome}</span>
+                    <strong style={{ fontSize: '1.5rem', color: 'white' }}>{cat.total} <span style={{ fontSize: '1rem', color: '#888' }}>itens</span></strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ flex: 1, minWidth: '250px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>💿 Formatos de Mídia</h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {estatisticas.atrasados.map((item, i) => (
-                  <li key={i} style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.3)', marginBottom: '10px', borderRadius: '6px' }}>
-                    <strong style={{ fontSize: '1.2rem' }}>{item.titulo}</strong> — Com: {item.usuario} <br/>
-                    <em style={{ color: '#ffcdd2' }}>Atrasado há {item.dias_atraso - 14} dias</em>
+                {estatisticas.porTipo?.map((tipo, i) => (
+                  <li key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #333' }}>
+                    <span style={{ color: '#ccc' }}>{tipo.tipo}</span>
+                    <strong style={{ color: 'white', backgroundColor: '#6200ea', padding: '2px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>{tipo.total}</strong>
                   </li>
                 ))}
               </ul>
-            )}
+            </div>
           </div>
 
+          {/* LINHA 3: Ranques e Linha do Tempo */}
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+            <div style={{ flex: 1, minWidth: '250px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
               <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🏆 Mais Cobiçados</h2>
               <ol style={{ paddingLeft: '20px', color: '#aaa', margin: 0 }}>
-                {estatisticas.topItens.map((item, i) => (
-                  <li key={i} style={{ marginBottom: '15px' }}><strong style={{ color: 'white' }}>{item.titulo}</strong> <br/>Emprestado {item.total_vezes} vezes</li>
+                {estatisticas.topItens?.map((item, i) => (
+                  <li key={i} style={{ marginBottom: '15px' }}><strong style={{ color: 'white' }}>{item.titulo}</strong> <br/>{item.total_vezes} empréstimos</li>
                 ))}
               </ol>
             </div>
-            <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
-              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🌟 Membros Mais Ativos</h2>
+
+            <div style={{ flex: 1, minWidth: '250px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>🌟 Membros Ativos</h2>
               <ol style={{ paddingLeft: '20px', color: '#aaa', margin: 0 }}>
-                {estatisticas.topUsuarios.map((user, i) => (
+                {estatisticas.topUsuarios?.map((user, i) => (
                   <li key={i} style={{ marginBottom: '15px' }}><strong style={{ color: 'white' }}>{user.nome}</strong> <br/>Pegou {user.total_pegos} itens</li>
                 ))}
               </ol>
             </div>
+
+            <div style={{ flex: 1, minWidth: '300px', backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '12px' }}>
+              <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '10px' }}>⏱️ Timeline de Movimentações</h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {estatisticas.ultimasMovimentacoes?.map((mov, i) => (
+                  <li key={i} style={{ marginBottom: '15px', fontSize: '0.9rem', borderLeft: `3px solid ${mov.data_devolucao ? '#00c853' : '#ffab00'}`, paddingLeft: '15px' }}>
+                    <strong style={{ color: 'white' }}>{mov.titulo}</strong><br/>
+                    <span style={{ color: '#aaa' }}>{mov.data_devolucao ? 'Devolvido por' : 'Pegou emprestado:'} <strong style={{color: '#ccc'}}>{mov.usuario}</strong></span><br/>
+                    <small style={{ color: '#666' }}>{formatarData(mov.data_devolucao || mov.data_emprestimo)}</small>
+                  </li>
+                ))}
+                {(!estatisticas.ultimasMovimentacoes || estatisticas.ultimasMovimentacoes.length === 0) && <p style={{ color: '#888' }}>Nenhuma atividade recente.</p>}
+              </ul>
+            </div>
           </div>
+
         </div>
       )}
       <ToastContainer theme="dark" position="bottom-right" />
